@@ -11,41 +11,55 @@ class TasksController extends Controller
     // getでtasks/にアクセスされた場合の「一覧表示処理」
     public function index()
     {
-        // メッセージ一覧を取得
-        $tasks = Task::all();
-
-        // メッセージ一覧ビューでそれを表示
-        return view('tasks.index', [
-            'tasks' => $tasks,
-        ]);
+        $data = [];
+        if (\Auth::check()) { // 認証済みの場合
+            // 認証済みユーザを取得
+            $user = \Auth::user();
+            $tasks = $user->tasks()->orderBy('created_at', 'desc')->paginate(10);
+            $data = [
+                'user' => $user,
+                'tasks' => $tasks,
+            ];
+        }
+        
+        // Welcomeビューでそれらを表示
+        return view('welcome', $data);
     }
 
     // getでtasks/createにアクセスされた場合の「新規登録画面表示処理」
     public function create()
     {
-        $task = new Task;
+        if (\Auth::check()) { // 認証済みの場合
+            $task = new Task;
 
-        // メッセージ作成ビューを表示
-        return view('tasks.create', [
-            'task' => $task,
-        ]);
+            // メッセージ作成ビューを表示
+            return view('tasks.create', [
+                'task' => $task,
+            ]);
+        }
+        else{
+            // トップページへリダイレクトさせる
+            return redirect('/');
+        }
     }
 
     // postでtasks/にアクセスされた場合の「新規登録処理」
     public function store(Request $request)
     {
-        // バリデーション
-        $request->validate([
-            'content' => 'required',
-            'status' => 'required|max:10',
-        ]);
-        
-        // メッセージを作成
-        $task = new Task;
-        $task->status = $request->status;
-        $task->content = $request->content;
-        $task->save();
+        if (\Auth::check()) { // 認証済みの場合
+            // バリデーション
+            $request->validate([
+                'content' => 'required|max:255',
+                'status' => 'required|max:10',
+            ]);
 
+            // 認証済みユーザ（閲覧者）の投稿として作成（リクエストされた値をもとに作成）
+            $request->user()->tasks()->create([
+                'content' => $request->content,
+                'status' => $request->status,
+            ]);
+        }
+        
         // トップページへリダイレクトさせる
         return redirect('/');
     }
@@ -53,13 +67,28 @@ class TasksController extends Controller
     // getでtasks/idにアクセスされた場合の「取得表示処理」
     public function show($id)
     {
-        // idの値でメッセージを検索して取得
-        $task = Task::findOrFail($id);
+        if (\Auth::check()) { // 認証済みの場合
+            // idの値でメッセージを検索して取得
+            $task = Task::findOrFail($id);
+            
+            // 認証済みユーザを取得
+            $user = \Auth::user();
+            
+            if($task->user_id !== $user->id){
+                // トップページへリダイレクトさせる
+                return redirect('/');
+            }
 
-        // メッセージ詳細ビューでそれを表示
-        return view('tasks.show', [
-            'task' => $task,
-        ]);
+            // メッセージ詳細ビューでそれを表示
+            return view('tasks.show', [
+                'task' => $task,
+            ]);
+        }
+        else{
+            // トップページへリダイレクトさせる
+            return redirect('/');
+        }
+        
     }
 
     // getでtasks/id/editにアクセスされた場合の「更新画面表示処理」
