@@ -94,13 +94,24 @@ class TasksController extends Controller
     // getでtasks/id/editにアクセスされた場合の「更新画面表示処理」
     public function edit($id)
     {
-        // idの値でメッセージを検索して取得
-        $task = Task::findOrFail($id);
+        if (\Auth::check()) { // 認証済みの場合
+            // idの値でメッセージを検索して取得
+            $task = Task::findOrFail($id);
+            
+            if($task->user_id !== $user->id){
+                // トップページへリダイレクトさせる
+                return redirect('/');
+            }
 
-        // メッセージ編集ビューでそれを表示
-        return view('tasks.edit', [
-            'task' => $task,
-        ]);
+            // メッセージ編集ビューでそれを表示
+            return view('tasks.edit', [
+                'task' => $task,
+            ]);
+        }
+        else{
+            // トップページへリダイレクトさせる
+            return redirect('/');
+        }
     }
 
     // putまたはpatchでtasks/idにアクセスされた場合の「更新処理」
